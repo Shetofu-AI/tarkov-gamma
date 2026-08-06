@@ -7,9 +7,13 @@ DEFAULT_PROFILE_FILE := A_ScriptDir . "\TarkovGamma.default.ini"
 SETTINGS_SECTION := "Profiles"
 POLL_INTERVAL := 70
 PROCESS_POLL_INTERVAL := 1000
+LOG_POLL_INTERVAL := 500
+LOG_RESCAN_INTERVAL := 3000
 REAPPLY_INTERVAL := 2000
 RAMP_BYTES := 1536
 MAX_HOTKEY_PROFILES := 9
+RAID_STARTED_MARKER := "|application|GameStarted:"
+MENU_ENTERED_MARKER := "|application|Init: pstrGameVersion"
 
 TraySetIcon("shell32.dll", 175)
 
@@ -19,9 +23,16 @@ profileNames := LoadProfileNames()
 activeProfile := LoadActiveProfile()
 startupProfile := LoadStartupProfile()
 gameRamp := LoadProfile(activeProfile)
+raidOnly := LoadRaidOnly()
+logsRoot := LoadLogsRoot()
 automationIsEnabled := true
 gammaIsApplied := false
 gameIsRunning := ProcessExist(GAME_PROCESS) != 0
+raidIsActive := false
+logFile := 0
+logPath := ""
+logPending := ""
+lastLogScanTick := 0
 targetDevice := ""
 lastApplyTick := 0
 
@@ -31,6 +42,7 @@ RefreshIconTip()
 OnExit(RestoreOnExit)
 SetTimer(RefreshGammaState, POLL_INTERVAL)
 SetTimer(WatchGameProcess, PROCESS_POLL_INTERVAL)
+SetTimer(WatchRaidLog, LOG_POLL_INTERVAL)
 
 WatchGameProcess() {
     global GAME_PROCESS, gameIsRunning, startupProfile, activeProfile
@@ -45,7 +57,7 @@ RefreshGammaState() {
     if (!automationIsEnabled)
         return
     gameWindow := FindGameWindow()
-    if (gameWindow) {
+    if (gameWindow && GammaIsAllowed()) {
         device := GetWindowDevice(gameWindow)
         if (gammaIsApplied && device != targetDevice)
             ApplyRamp(targetDevice, linearRamp)
@@ -73,6 +85,105 @@ FindGameWindow() {
         return 0
     }
     return 0
+}
+
+GammaIsAllowed() {
+    global raidOnly, logPath, raidIsActive
+    if (!raidOnly || logPath = "")
+        return true
+    return raidIsActive
+}
+
+WatchRaidLog() {
+    global raidOnly, logsRoot, gameIsRunning, logFile, logPath, lastLogScanTick, LOG_RESCAN_INTERVAL
+    if (!raidOnly || logsRoot = "")
+        return
+    if (!gameIsRunning) {
+        CloseRaidLog()
+        return
+    }
+    if (A_TickCount - lastLogScanTick > LOG_RESCAN_INTERVAL) {
+        lastLogScanTick := A_TickCount
+        latest := FindLatestLog(logsRoot)
+        if (latest != "" && latest != logPath)
+            OpenRaidLog(latest)
+    }
+    if (!logFile)
+        return
+    if (logFile.Pos >= logFile.Length)
+        return
+    ReadRaidLog()
+}
+
+OpenRaidLog(path) {
+    global logFile, logPath, logPending
+    stream := FileOpen(path, "r", "UTF-8")
+    if (!IsObject(stream))
+        return
+    CloseRaidLog()
+    logFile := stream
+    logPath := path
+    logPending := stream.Read()
+    FlushRaidLog()
+}
+
+CloseRaidLog() {
+    global logFile, logPath, logPending, raidIsActive
+    if (logFile)
+        logFile.Close()
+    logFile := 0
+    logPath := ""
+    logPending := ""
+    raidIsActive := false
+}
+
+ReadRaidLog() {
+    global logFile, logPending
+    logPending .= logFile.Read()
+    FlushRaidLog()
+}
+
+FlushRaidLog() {
+    global logPending
+    lineBreak := InStr(logPending, "`n", , -1)
+    if (!lineBreak)
+        return
+    ApplyRaidMarkers(SubStr(logPending, 1, lineBreak))
+    logPending := SubStr(logPending, lineBreak + 1)
+}
+
+ApplyRaidMarkers(text) {
+    global RAID_STARTED_MARKER, MENU_ENTERED_MARKER, raidIsActive
+    for line in StrSplit(text, "`n", "`r") {
+        if (InStr(line, RAID_STARTED_MARKER)) {
+            raidIsActive := true
+        }
+        else if (InStr(line, MENU_ENTERED_MARKER)) {
+            raidIsActive := false
+        }
+    }
+}
+
+FindLatestLog(root) {
+    newestFolder := ""
+    newestFolderTime := ""
+    loop files root . "\*", "D" {
+        if (newestFolderTime = "" || A_LoopFileTimeModified > newestFolderTime) {
+            newestFolderTime := A_LoopFileTimeModified
+            newestFolder := A_LoopFilePath
+        }
+    }
+    if (newestFolder = "")
+        return ""
+    newestLog := ""
+    newestLogTime := ""
+    loop files newestFolder . "\*application_*.log" {
+        if (newestLogTime = "" || A_LoopFileTimeModified > newestLogTime) {
+            newestLogTime := A_LoopFileTimeModified
+            newestLog := A_LoopFilePath
+        }
+    }
+    return newestLog
 }
 
 GetWindowDevice(hwnd) {
@@ -157,6 +268,35 @@ LoadStartupProfile() {
     for name in profileNames {
         if (name = stored)
             return stored
+    }
+    return ""
+}
+
+LoadRaidOnly() {
+    global PROFILE_FILE, SETTINGS_SECTION
+    return IniRead(PROFILE_FILE, SETTINGS_SECTION, "RaidOnly", "1") != "0"
+}
+
+LoadLogsRoot() {
+    global PROFILE_FILE, SETTINGS_SECTION
+    configured := IniRead(PROFILE_FILE, SETTINGS_SECTION, "LogsRoot", "")
+    if (configured != "")
+        return DirExist(configured) ? configured : ""
+    return FindInstalledLogsRoot()
+}
+
+FindInstalledLogsRoot() {
+    uninstallKeys := ["HKLM\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"
+        , "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"]
+    for uninstallKey in uninstallKeys {
+        loop reg uninstallKey, "K" {
+            entry := A_LoopRegKey . "\" . A_LoopRegName
+            if (RegRead(entry, "DisplayName", "") != "Escape from Tarkov")
+                continue
+            logs := RegRead(entry, "InstallLocation", "") . "\Logs"
+            if (DirExist(logs))
+                return logs
+        }
     }
     return ""
 }
@@ -283,15 +423,15 @@ ReadActiveMonitorRamp() {
 RegisterProfileHotkeys() {
     global MAX_HOTKEY_PROFILES, profileNames
     loop MAX_HOTKEY_PROFILES {
-        Hotkey("^" . A_Index, SelectProfileByIndex, A_Index <= profileNames.Length ? "On" : "Off")
+        Hotkey("^!" . A_Index, SelectProfileByIndex, A_Index <= profileNames.Length ? "On" : "Off")
     }
 }
 
 BuildTrayMenu() {
-    global profileNames, activeProfile, automationIsEnabled, MAX_HOTKEY_PROFILES
+    global profileNames, activeProfile, automationIsEnabled, raidOnly, MAX_HOTKEY_PROFILES
     A_TrayMenu.Delete()
     for index, name in profileNames {
-        label := name . (index <= MAX_HOTKEY_PROFILES ? "`tCtrl+" . index : "")
+        label := name . (index <= MAX_HOTKEY_PROFILES ? "`tCtrl+Alt+" . index : "")
         A_TrayMenu.Add(label, SelectProfileFromTray)
         if (name = activeProfile)
             A_TrayMenu.Check(label)
@@ -302,11 +442,23 @@ BuildTrayMenu() {
     A_TrayMenu.Add("Перезаписать активный`tCtrl+Alt+G", CaptureCurrentRamp)
     A_TrayMenu.Add("Новый профиль из текущей гаммы", CreateProfile)
     A_TrayMenu.Add()
+    A_TrayMenu.Add("Только в рейде", ToggleRaidOnly)
     A_TrayMenu.Add("Пауза`tCtrl+Alt+P", ToggleAutomation)
     A_TrayMenu.Add("Сбросить гамму сейчас", ResetAllMonitors)
     A_TrayMenu.Add("Выход", (*) => ExitApp())
+    if (raidOnly)
+        A_TrayMenu.Check("Только в рейде")
     if (!automationIsEnabled)
         A_TrayMenu.Check("Пауза`tCtrl+Alt+P")
+}
+
+ToggleRaidOnly(*) {
+    global raidOnly, PROFILE_FILE, SETTINGS_SECTION
+    raidOnly := !raidOnly
+    IniWrite(raidOnly ? "1" : "0", PROFILE_FILE, SETTINGS_SECTION, "RaidOnly")
+    A_TrayMenu.ToggleCheck("Только в рейде")
+    if (!raidOnly)
+        CloseRaidLog()
 }
 
 SelectProfileFromTray(itemName, *) {
