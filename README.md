@@ -35,7 +35,7 @@ On first run the script copies `TarkovGamma.default.ini` to `TarkovGamma.ini` an
 | --- | --- | --- |
 | `Ctrl+1` | `Default` | Linear — the untouched display ramp, the vanilla picture |
 | `Ctrl+2` | `Tarkov` | Aggressive night curve: shadows stretched hard, white point pulled down to 94.5% |
-| `Ctrl+3` | `Base` | Mild everyday curve: gamma 1.25, 3.5% black lift that fades out towards the highlights, white point at 98% |
+| `Ctrl+3` | `Base` | Everyday curve captured from RivaTuner at `Brightness +10, Contrast +10, Gamma 1.7`: black lifted to 2560, input 64 → 29952, 128 → 46080, white point at 99.6% |
 
 `Base` is the startup profile — it gets selected automatically whenever `EscapeFromTarkov.exe` starts. It is meant as a baseline that is simply easier to read than the stock image without washing the picture out; `Tarkov` stays for genuinely dark maps.
 
