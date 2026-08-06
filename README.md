@@ -11,6 +11,7 @@ Tools like RivaTuner can apply a colour scheme, but it stays on the whole deskto
 - Touches only the monitor the game window lives on — other displays are never modified
 - Re-applies the ramp every 2 seconds while the game is focused, because Unity resets the gamma ramp on display mode changes and wipes any external correction
 - Stores several named profiles and remembers which one is active across restarts
+- Switches back to a designated startup profile every time the game process launches, so a profile you picked for one raid does not silently stay for the next session
 
 ## Requirements
 
@@ -20,11 +21,21 @@ Tools like RivaTuner can apply a colour scheme, but it stays on the whole deskto
 
 ## Install
 
-1. Put `TarkovGamma.ahk` anywhere you like
+1. Put `TarkovGamma.ahk` and `TarkovGamma.default.ini` in the same folder
 2. Run it with AutoHotkey v2
 3. For autostart, drop a shortcut into `shell:startup` pointing at `AutoHotkey64.exe "<path>\TarkovGamma.ahk"`
 
-The script has no profiles on first run and will keep the display linear until you create one.
+On first run the script copies `TarkovGamma.default.ini` to `TarkovGamma.ini` and works from that copy, so your own tweaks never collide with an update of the shipped defaults. Without the default file it simply starts with no profiles and keeps the display linear until you create one.
+
+## Bundled profiles
+
+| Hotkey | Profile | Curve |
+| --- | --- | --- |
+| `Ctrl+1` | `Neutral` | Linear — the untouched display ramp |
+| `Ctrl+2` | `Tarkov` | Aggressive night curve: shadows stretched hard, white point pulled down to 94.5% |
+| `Ctrl+3` | `Default` | Mild everyday curve: gamma 1.25, 3.5% black lift that fades out towards the highlights, white point at 98% |
+
+`Default` is the startup profile — it gets selected automatically whenever `EscapeFromTarkov.exe` starts. It is meant as a baseline that is simply easier to read than the stock image without washing the picture out; `Tarkov` stays for genuinely dark maps.
 
 ## Hotkeys
 
@@ -52,7 +63,8 @@ Profiles live in `TarkovGamma.ini` next to the script. Each profile is one secti
 
 ```ini
 [Profiles]
-Active=Tarkov
+Active=Default
+Startup=Default
 
 [Neutral]
 R=0,257,514,...,65535
@@ -66,6 +78,8 @@ B=...
 ```
 
 Section order defines the `Ctrl+N` numbering. Rename, reorder or delete profiles by editing the file; the script reads it at startup.
+
+`Startup` names the profile that is selected when the game process appears. Point it at another section to change the default, or delete the key to keep whatever profile was active last.
 
 ## Notes
 
