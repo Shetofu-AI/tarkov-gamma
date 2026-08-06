@@ -423,7 +423,7 @@ ReadActiveMonitorRamp() {
 RegisterProfileHotkeys() {
     global MAX_HOTKEY_PROFILES, profileNames
     loop MAX_HOTKEY_PROFILES {
-        Hotkey("^!" . A_Index, SelectProfileByIndex, A_Index <= profileNames.Length ? "On" : "Off")
+        Hotkey("^" . A_Index, SelectProfileByIndex, A_Index <= profileNames.Length ? "On" : "Off")
     }
 }
 
@@ -431,7 +431,7 @@ BuildTrayMenu() {
     global profileNames, activeProfile, automationIsEnabled, raidOnly, MAX_HOTKEY_PROFILES
     A_TrayMenu.Delete()
     for index, name in profileNames {
-        label := name . (index <= MAX_HOTKEY_PROFILES ? "`tCtrl+Alt+" . index : "")
+        label := name . (index <= MAX_HOTKEY_PROFILES ? "`tCtrl+" . index : "")
         A_TrayMenu.Add(label, SelectProfileFromTray)
         if (name = activeProfile)
             A_TrayMenu.Check(label)

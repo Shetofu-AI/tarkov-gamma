@@ -32,9 +32,9 @@ On first run the script copies `TarkovGamma.default.ini` to `TarkovGamma.ini` an
 
 | Hotkey | Profile | Curve |
 | --- | --- | --- |
-| `Ctrl+Alt+1` | `Neutral` | Linear — the untouched display ramp |
-| `Ctrl+Alt+2` | `Tarkov` | Aggressive night curve: shadows stretched hard, white point pulled down to 94.5% |
-| `Ctrl+Alt+3` | `Default` | Mild everyday curve: gamma 1.25, 3.5% black lift that fades out towards the highlights, white point at 98% |
+| `Ctrl+1` | `Neutral` | Linear — the untouched display ramp |
+| `Ctrl+2` | `Tarkov` | Aggressive night curve: shadows stretched hard, white point pulled down to 94.5% |
+| `Ctrl+3` | `Default` | Mild everyday curve: gamma 1.25, 3.5% black lift that fades out towards the highlights, white point at 98% |
 
 `Default` is the startup profile — it gets selected automatically whenever `EscapeFromTarkov.exe` starts. It is meant as a baseline that is simply easier to read than the stock image without washing the picture out; `Tarkov` stays for genuinely dark maps.
 
@@ -42,14 +42,14 @@ On first run the script copies `TarkovGamma.default.ini` to `TarkovGamma.ini` an
 
 | Hotkey | Action |
 | --- | --- |
-| `Ctrl+Alt+1` … `Ctrl+Alt+9` | Select profile by position in the ini file |
+| `Ctrl+1` … `Ctrl+9` | Select profile by position in the ini file |
 | `Ctrl+Alt+X` | Next profile |
 | `Ctrl+Alt+G` | Overwrite the active profile with the ramp currently on screen |
 | `Ctrl+Alt+P` | Pause — stop touching the gamma at all |
 
-`Ctrl+Alt+N` is registered only for numbers that actually have a profile, so unused ones stay free for other software.
+`Ctrl+N` is registered only for numbers that actually have a profile, so unused ones stay free for other software.
 
-Alt is part of the combination on purpose. `Ctrl+1` alone collides with the game itself: `Ctrl` is crouch and the digits are weapon slots, so crouching and swapping to your primary would silently switch the gamma profile mid-fight.
+Note that `RegisterHotKey` is exclusive: while the script holds `Ctrl+1`, the game never sees that combination. In Tarkov `Ctrl` is crouch and the digits are weapon slots, so crouching and swapping to a slot switches the gamma profile instead of the weapon. Move the binding to `Ctrl+Alt+N` in `RegisterProfileHotkeys` if that gets in your way.
 
 ## Raid detection
 
@@ -89,13 +89,13 @@ G=...
 B=...
 ```
 
-Section order defines the `Ctrl+Alt+N` numbering. Rename, reorder or delete profiles by editing the file; the script reads it at startup.
+Section order defines the `Ctrl+N` numbering. Rename, reorder or delete profiles by editing the file; the script reads it at startup.
 
 `Startup` names the profile that is selected when the game process appears. Point it at another section to change the default, or delete the key to keep whatever profile was active last. `RaidOnly` and the optional `LogsRoot` control raid detection, see above.
 
 ## Notes
 
-- **Do not bind another tool to the same combinations.** `RegisterHotKey` is exclusive: whoever registers `Ctrl+Alt+1` first gets it, and the loser never sees an error — it simply receives nothing. RivaTuner defaults to `Ctrl+1`/`Ctrl+2`/`Ctrl+3` for its schemes, which is one more reason this script sits on `Ctrl+Alt+N`.
+- **Do not leave RivaTuner running** if you bind its schemes to `Ctrl+1`/`Ctrl+2`/`Ctrl+3`. It claims those combinations through `RegisterHotKey`, which is exclusive, and this script will silently never see them. Forcing a low-level hook (`$^1`) takes them back, but a plain registration is more reliable in anti-cheat protected fullscreen games.
 - Notifications are deliberately absent. A Windows toast can pull focus away from a fullscreen game, which would immediately drop the correction. Feedback goes to the tray icon tooltip and a checkmark in the tray menu.
 - The script only reads and writes the display gamma ramp through GDI. It does not touch the game process.
 
