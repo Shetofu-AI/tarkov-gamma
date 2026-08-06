@@ -3,20 +3,25 @@
 
 GAME_PROCESS := "EscapeFromTarkov.exe"
 PROFILE_FILE := A_ScriptDir . "\TarkovGamma.ini"
+DEFAULT_PROFILE_FILE := A_ScriptDir . "\TarkovGamma.default.ini"
 SETTINGS_SECTION := "Profiles"
 POLL_INTERVAL := 70
+PROCESS_POLL_INTERVAL := 1000
 REAPPLY_INTERVAL := 2000
 RAMP_BYTES := 1536
 MAX_HOTKEY_PROFILES := 9
 
 TraySetIcon("shell32.dll", 175)
 
+EnsureProfileFile()
 linearRamp := BuildLinearRamp()
 profileNames := LoadProfileNames()
 activeProfile := LoadActiveProfile()
+startupProfile := LoadStartupProfile()
 gameRamp := LoadProfile(activeProfile)
 automationIsEnabled := true
 gammaIsApplied := false
+gameIsRunning := ProcessExist(GAME_PROCESS) != 0
 targetDevice := ""
 lastApplyTick := 0
 
@@ -25,6 +30,15 @@ RegisterProfileHotkeys()
 RefreshIconTip()
 OnExit(RestoreOnExit)
 SetTimer(RefreshGammaState, POLL_INTERVAL)
+SetTimer(WatchGameProcess, PROCESS_POLL_INTERVAL)
+
+WatchGameProcess() {
+    global GAME_PROCESS, gameIsRunning, startupProfile, activeProfile
+    isRunning := ProcessExist(GAME_PROCESS) != 0
+    if (isRunning && !gameIsRunning && startupProfile != "" && startupProfile != activeProfile)
+        SelectProfile(startupProfile)
+    gameIsRunning := isRunning
+}
 
 RefreshGammaState() {
     global automationIsEnabled, gammaIsApplied, targetDevice, lastApplyTick
@@ -107,6 +121,13 @@ BuildLinearRamp() {
     return ramp
 }
 
+EnsureProfileFile() {
+    global PROFILE_FILE, DEFAULT_PROFILE_FILE
+    if (FileExist(PROFILE_FILE) || !FileExist(DEFAULT_PROFILE_FILE))
+        return
+    FileCopy(DEFAULT_PROFILE_FILE, PROFILE_FILE)
+}
+
 LoadProfileNames() {
     global PROFILE_FILE, SETTINGS_SECTION
     names := []
@@ -128,6 +149,16 @@ LoadActiveProfile() {
             return stored
     }
     return profileNames[1]
+}
+
+LoadStartupProfile() {
+    global PROFILE_FILE, SETTINGS_SECTION, profileNames
+    stored := IniRead(PROFILE_FILE, SETTINGS_SECTION, "Startup", "")
+    for name in profileNames {
+        if (name = stored)
+            return stored
+    }
+    return ""
 }
 
 LoadProfile(name) {
