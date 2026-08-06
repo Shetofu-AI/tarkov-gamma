@@ -36,11 +36,10 @@ On first run the script copies `TarkovGamma.default.ini` to `TarkovGamma.ini` an
 | `Ctrl+1` | `Default` | Linear — the untouched display ramp, the vanilla picture |
 | `Ctrl+2` | `Tarkov` | Aggressive night curve: shadows stretched hard, white point pulled down to 94.5% |
 | `Ctrl+3` | `Base` | Mild everyday curve: gamma 1.25, 3.5% black lift that fades out towards the highlights, white point at 98% |
-| `Ctrl+4` | `Test` | RivaTuner-style curve for `Brightness -40, Contrast +10, Gamma 2.2`: midtones stretched, everything below input 27 crushed to black, white point at 70% |
 
 `Base` is the startup profile — it gets selected automatically whenever `EscapeFromTarkov.exe` starts. It is meant as a baseline that is simply easier to read than the stock image without washing the picture out; `Tarkov` stays for genuinely dark maps.
 
-The RivaTuner sliders map onto the ramp as `out = (1 + contrast/100) * (in ^ (1/gamma)) + brightness/100`, clamped to `[0, 1]`. Fitting that formula against a ramp captured from RivaTuner reproduces it to within a fraction of a percent above input 16, so profiles can be authored from slider values without launching RivaTuner at all.
+Authoring a profile from another tool's sliders is guesswork — the scale behind `Brightness -40` is not knowable from the number alone, and RivaTuner's own registry values do not reproduce its captured ramp under any obvious reading of them. Let the tool apply the correction and capture the result with `Ctrl+Alt+G` instead.
 
 ## Hotkeys
 
