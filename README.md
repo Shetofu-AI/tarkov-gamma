@@ -9,6 +9,7 @@ Tools like RivaTuner can apply a colour scheme, but it stays on the whole deskto
 - Applies a saved gamma ramp when `EscapeFromTarkov.exe` becomes the active window
 - Restores a linear ramp as soon as focus leaves the game, when the game exits, and when the script exits
 - Follows the game log to tell a raid from the menu, so the correction is live in the raid only and drops the moment you die, extract or go back to the hideout
+- Drops the correction whenever the mouse cursor is visible, which is exactly when the game shows UI — inventory, looting, the map, the in-raid menu — because the interface looks wrong through a gamma curve meant for the world
 - Touches only the monitor the game window lives on — other displays are never modified
 - Re-applies the ramp every 2 seconds while the game is focused, because Unity resets the gamma ramp on display mode changes and wipes any external correction
 - Stores several named profiles and remembers which one is active across restarts
@@ -32,11 +33,14 @@ On first run the script copies `TarkovGamma.default.ini` to `TarkovGamma.ini` an
 
 | Hotkey | Profile | Curve |
 | --- | --- | --- |
-| `Ctrl+1` | `Neutral` | Linear — the untouched display ramp |
+| `Ctrl+1` | `Default` | Linear — the untouched display ramp, the vanilla picture |
 | `Ctrl+2` | `Tarkov` | Aggressive night curve: shadows stretched hard, white point pulled down to 94.5% |
-| `Ctrl+3` | `Default` | Mild everyday curve: gamma 1.25, 3.5% black lift that fades out towards the highlights, white point at 98% |
+| `Ctrl+3` | `Base` | Mild everyday curve: gamma 1.25, 3.5% black lift that fades out towards the highlights, white point at 98% |
+| `Ctrl+4` | `Test` | RivaTuner-style curve for `Brightness -40, Contrast +10, Gamma 2.2`: midtones stretched, everything below input 27 crushed to black, white point at 70% |
 
-`Default` is the startup profile — it gets selected automatically whenever `EscapeFromTarkov.exe` starts. It is meant as a baseline that is simply easier to read than the stock image without washing the picture out; `Tarkov` stays for genuinely dark maps.
+`Base` is the startup profile — it gets selected automatically whenever `EscapeFromTarkov.exe` starts. It is meant as a baseline that is simply easier to read than the stock image without washing the picture out; `Tarkov` stays for genuinely dark maps.
+
+The RivaTuner sliders map onto the ramp as `out = (1 + contrast/100) * (in ^ (1/gamma)) + brightness/100`, clamped to `[0, 1]`. Fitting that formula against a ramp captured from RivaTuner reproduces it to within a fraction of a percent above input 16, so profiles can be authored from slider values without launching RivaTuner at all.
 
 ## Hotkeys
 
@@ -74,11 +78,11 @@ Profiles live in `TarkovGamma.ini` next to the script. Each profile is one secti
 
 ```ini
 [Profiles]
-Active=Default
-Startup=Default
+Active=Base
+Startup=Base
 RaidOnly=1
 
-[Neutral]
+[Default]
 R=0,257,514,...,65535
 G=0,257,514,...,65535
 B=0,257,514,...,65535

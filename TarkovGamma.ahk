@@ -89,9 +89,19 @@ FindGameWindow() {
 
 GammaIsAllowed() {
     global raidOnly, logPath, raidIsActive
+    if (CursorIsVisible())
+        return false
     if (!raidOnly || logPath = "")
         return true
     return raidIsActive
+}
+
+CursorIsVisible() {
+    info := Buffer(24, 0)
+    NumPut("uint", 24, info, 0)
+    if (!DllCall("user32\GetCursorInfo", "ptr", info))
+        return false
+    return (NumGet(info, 4, "uint") & 1) != 0
 }
 
 WatchRaidLog() {
